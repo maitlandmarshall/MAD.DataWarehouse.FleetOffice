@@ -1,3 +1,7 @@
 {
-
+  "oauth": {
+    "accessTokenUrl": "https://thefleetoffice.net.au:7080/oauth/token",
+    "scope": [ "*" ],
+    "flowType": "ClientCredentials"
+  }
 }

@@ -8,7 +8,8 @@
   <ItemGroup>
     <PackageReference Include="MIFCore" Version="1.0.2" />
     <PackageReference Include="MIFCore.Hangfire" Version="1.1.0" />
-    <PackageReference Include="MIFCore.Hangfire.APIETL" Version="1.0.0-rev.11280436" />
+    <PackageReference Include="MIFCore.Hangfire.APIETL" Version="1.0.0-rev.11282314" />
+    <PackageReference Include="OAuthB0ner" Version="0.0.3-rev.11290153" />
   </ItemGroup>
 
   <ItemGroup>
