@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MIFCore.Common;
-using MIFCore.Hangfire.APIETL.Extract;
+using MIFCore.Hangfire.APIETL;
 using MIFCore.Settings;
 using OAuthB0ner;
 using System;
@@ -25,21 +25,20 @@ namespace MAD.DataWarehouse.FleetOffice
             serviceDescriptors.AddTransient<AuthenticationDelegatingHandler>();
 
             serviceDescriptors
-                .AddHttpClient("fleet", cfg =>
+                .AddHttpClient(string.Empty, cfg =>
                 {
                     cfg.BaseAddress = new Uri("https://thefleetoffice.net.au:7080");
                 })
                 .AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 
-            serviceDescriptors.AddEndpointsApiExplorer();
-
+            serviceDescriptors.AddApiEndpointsToExtract();
             serviceDescriptors.AddOAuthB0ner(oauth =>
             {
                 this.configuration.Bind("oauth", oauth);
             });
         }
 
-        public async Task Configure(IApiEndpointRegister apiEndpointRegister)
+        public async Task PostConfigure(IApiEndpointRegister apiEndpointRegister)
         {
             await apiEndpointRegister.Register();
         }
