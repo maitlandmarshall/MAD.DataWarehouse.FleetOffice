@@ -57,7 +57,7 @@ namespace MAD.DataWarehouse.FleetOffice.Api.Load
                     .GetTypes()
                     .Select(y => y.GetApiEndpointModel())
                     .Where(y => y != null)
-                    .FirstOrDefault(y => y?.EndpointName == args.Endpoint.Name);
+                    .FirstOrDefault(y => y?.EndpointName == args.Endpoint.Name && y?.InputPath == set.Key);
 
                 // If there is no model mapping, do nothing.
                 if (apiEndpointModel is null)
@@ -69,7 +69,15 @@ namespace MAD.DataWarehouse.FleetOffice.Api.Load
                 {
                     this.AutoMapMissingModelProperties(set, apiEndpointModel);
 
+                    tableDefinition = new TableDefinition(
+                        name: apiEndpointModel.DestinationName,
+                        columns: apiEndpointModel.MappedProperties.Select(kvp =>
+                        {
+                            var (key, value) = kvp;
+                            return new TableColumn(value.DestinationName, value.DestinationType, value.IsKey == false, value.IsKey, false);
+                        }).ToList());
 
+                    CreateTableTask.Create(connMan, tableDefinition);
                 }
                 else
                 {
