@@ -1,6 +1,9 @@
 ﻿using ETLBox.Connection;
 using ETLBox.ControlFlow;
 using ETLBox.ControlFlow.Tasks;
+using ETLBox.DataFlow;
+using ETLBox.DataFlow.Connectors;
+using Humanizer;
 using MIFCore.Hangfire.APIETL;
 using MIFCore.Hangfire.APIETL.Load;
 using MIFCore.Hangfire.APIETL.Transform;
@@ -63,12 +66,12 @@ namespace MAD.DataWarehouse.FleetOffice.Api.Load
                 if (apiEndpointModel is null)
                     continue;
 
+                this.AutoMapModelPropertiesFromApi(set, apiEndpointModel);
+
                 TableDefinition tableDefinition;
 
                 if (IfTableOrViewExistsTask.IsExisting(connMan, apiEndpointModel.DestinationName) == false)
                 {
-                    this.AutoMapMissingModelProperties(set, apiEndpointModel);
-
                     tableDefinition = new TableDefinition(
                         name: apiEndpointModel.DestinationName,
                         columns: apiEndpointModel.MappedProperties.Select(kvp =>
@@ -83,10 +86,38 @@ namespace MAD.DataWarehouse.FleetOffice.Api.Load
                 {
                     tableDefinition = TableDefinition.FromTableName(connMan, apiEndpointModel.DestinationName);
                 }
+
+                var source = new MemorySource(set.SelectMany(y => y.Objects.Cast<ExpandoObject>()).ToList());
+                var merge = new DbMerge(connMan, apiEndpointModel.DestinationName)
+                {
+                    DestinationTableDefinition = tableDefinition,
+                    MergeMode = ETLBox.DataFlow.MergeMode.InsertsAndUpdates,
+                    ColumnMapping = apiEndpointModel
+                        .MappedProperties
+                        .Values
+                        .Select(y => new ColumnMap
+                        {
+                            PropertyName = y.SourceName,
+                            DbColumnName = y.DestinationName
+                        })
+                        .ToList(),
+                    MergeProperties =
+                    {
+                        IdColumns = apiEndpointModel
+                            .MappedProperties
+                            .Values
+                            .Where(y => y.IsKey)
+                            .Select(y => new IdColumn { IdPropertyName = y.SourceName })
+                            .ToList()
+                    }
+                };
+
+                source.LinkTo(merge);
+                await source.ExecuteAsync();
             }
         }
 
-        private void AutoMapMissingModelProperties(IGrouping<string, GraphObjectSet> set, ApiEndpointModel apiEndpointModel)
+        private void AutoMapModelPropertiesFromApi(IGrouping<string, GraphObjectSet> set, ApiEndpointModel apiEndpointModel)
         {
             var allKeyTypes = set.GetKeyTypes();
 
@@ -108,7 +139,6 @@ namespace MAD.DataWarehouse.FleetOffice.Api.Load
                     apiEndpointModelProperty = new ApiEndpointModelProperty
                     {
                         SourceName = key,
-                        DestinationName = key,
                         DestinationType = this.GetDestinationType(key, types),
                         SourceType = types,
                         IsKey = false
@@ -119,6 +149,23 @@ namespace MAD.DataWarehouse.FleetOffice.Api.Load
                 else
                 {
                     apiEndpointModelProperty.DestinationType = this.GetDestinationType(key, types);
+                }
+
+                if (string.IsNullOrWhiteSpace(apiEndpointModelProperty.DestinationName))
+                {
+                    var underscoreReplacement = "****";
+
+                    apiEndpointModelProperty.DestinationName = apiEndpointModelProperty
+                        .SourceName
+
+                        // Pascalize removes underscores, and spaces, so replace them with a placeholder for now
+                        // Add spaces so pascalize can capitalize words separated by underscores properly
+                        .Replace("_", $" {underscoreReplacement} ")
+                        .Pascalize()
+
+                        // Since spaces are removed, only the actual replacement characters should be left.
+                        // Conver them back to underscores
+                        .Replace(underscoreReplacement, "_");
                 }
             }
         }
