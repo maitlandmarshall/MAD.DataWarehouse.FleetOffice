@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using MIFCore.Common;
 using MIFCore.Hangfire.APIETL;
+using MIFCore.Hangfire.APIETL.SqlServer;
 using MIFCore.Settings;
 using OAuthB0ner;
 using System;
@@ -32,6 +33,8 @@ namespace MAD.DataWarehouse.FleetOffice
                 .AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 
             serviceDescriptors.AddApiEndpointsToExtract();
+            serviceDescriptors.AddApiEndpointsSqlServerDestination();
+
             serviceDescriptors.AddOAuthB0ner(oauth =>
             {
                 this.configuration.Bind("oauth", oauth);
